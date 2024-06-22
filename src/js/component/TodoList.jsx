@@ -26,19 +26,29 @@ const TodoList = () => {
         .catch(error => console.error('Error deleting task:', error));
     };
 
-    const deleteTasks = () => {
-        tasks.forEach(task => {
-            if (task.id) {
+    const deleteTasks = async () => {
+        try {
+            
+            const response = await fetch(`https://playground.4geeks.com/todo/users/${userName}`);
+            if (!response.ok) throw new Error(response.statusText);
+            const data = await response.json();
+            const serverTasks = data.todos || [];
+    
+            const deletePromises = serverTasks.map((task) =>
                 fetch(`https://playground.4geeks.com/todo/todos/${task.id}`, {
-                    method: "DELETE"
+                    method: "DELETE",
+                }).then(response => {
+                    if (!response.ok) throw new Error(`Error deleting task ${task.id}: ${response.statusText}`);
+                    return response;
                 })
-                .then(resp => {
-                    if (!resp.ok) throw new Error(resp.statusText);
-                })
-                .catch(error => console.error('Error deleting task:', error));
-            }
-        });
-        setTasks([]);
+            );
+            
+            await Promise.all(deletePromises);
+            console.log('All tasks deleted successfully');
+            setTasks([]);
+        } catch (error) {
+            console.error('Error deleting tasks:', error);
+        }
     };
 
     const updateTasksOnServer = (newTasks) => {
@@ -124,8 +134,8 @@ const TodoList = () => {
                     {tasks.length === 0 ? (
                         <li>No hay tareas, añadir tareas</li>
                     ) : (
-                        tasks.map((task) => (
-                            <li key={task.id} className="task">
+                        tasks.map((task, index) => (
+                            <li key={`${task.id || 'temp'}-${index}`} className="task">
                                 {task.label}
                                 <span className="delete-icon" onClick={() => handleDelete(task.id)}>X</span>
                             </li>
